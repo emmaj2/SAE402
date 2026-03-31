@@ -25,7 +25,8 @@ const spawnSpeed = 2; // Vitesse de descente
 let frameCount = 0;
 
 // RECETTE ET PROGRESSION
-const recipe = [1, 2, 3, 4]; // L'ordre des IDs à ramasser
+// RECETTE ET PROGRESSION
+let recipe = [1, 2, 3, 4]; // L'ordre sera mélangé au début
 let currentRecipeIndex = 0; // Quel ingrédient on cherche (0 à 3)
 let gameActive = false;
 let victory = false;
@@ -34,6 +35,10 @@ let victory = false;
 let controlsInverted = false;
 let inversionTimer = 0;
 const INVERSION_DURATION = 180; // 3 secondes à 60fps
+
+let isOiled = false;
+let oilTimer = 0;
+const OIL_DURATION = 300; // 5 secondes à 60fps
 
 // CONTRÔLES CLAVIER (POUR TEST PC)
 let keys = {
@@ -143,6 +148,9 @@ function handlePickup(obj) {
         if (obj.id === 1) { // Malus Inversion
             controlsInverted = true;
             inversionTimer = INVERSION_DURATION;
+        } else if (obj.id === 2) { // Malus Huile
+            isOiled = true;
+            oilTimer = OIL_DURATION;
         } else {
             // Autres malus (Simple reset pour l'instant)
             currentRecipeIndex = 0;
@@ -212,6 +220,28 @@ function drawUI() {
         ctx.textAlign = "right";
         ctx.fillText("ATTENTION : INVERSE !", gaugeX + gaugeW, gaugeY - 5);
     }
+
+    // JAUGE D'HUILE
+    if (isOiled) {
+        const gaugeW = 100;
+        const gaugeH = 10;
+        const gaugeX = W - gaugeW - 20;
+        const gaugeY = controlsInverted ? 50 : 20; // Se décale si l'autre jauge est là
+
+        // Fond jauge
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
+        ctx.fillRect(gaugeX, gaugeY, gaugeW, gaugeH);
+
+        // Remplissage (temps restant)
+        const progress = oilTimer / OIL_DURATION;
+        ctx.fillStyle = "#FFC107"; // Jaune huile
+        ctx.fillRect(gaugeX, gaugeY, gaugeW * progress, gaugeH);
+
+        ctx.fillStyle = "white";
+        ctx.font = "bold 10px Arial";
+        ctx.textAlign = "right";
+        ctx.fillText("ATTENTION : HUILE !", gaugeX + gaugeW, gaugeY - 5);
+    }
 }
 
 function draw() {
@@ -233,6 +263,10 @@ function draw() {
     if (controlsInverted) {
         inversionTimer--;
         if (inversionTimer <= 0) controlsInverted = false;
+    }
+    if (isOiled) {
+        oilTimer--;
+        if (oilTimer <= 0) isOiled = false;
     }
 
     handleKeyboardInput();
@@ -263,7 +297,8 @@ function draw() {
 // CONTRÔLES (GYROSCOPE)
 window.addEventListener('deviceorientation', (event) => {
     if (event.gamma !== null) {
-        let tilt = event.gamma * sensitivity;
+        let currentSense = isOiled ? sensitivity / 2 : sensitivity;
+        let tilt = event.gamma * currentSense;
         if (controlsInverted) tilt *= -1;
         player.ax = tilt;
     }
@@ -279,9 +314,10 @@ window.addEventListener('keyup', (e) => {
 });
 
 function handleKeyboardInput() {
+    let currentSense = isOiled ? sensitivity / 2 : sensitivity;
     let tilt = 0;
-    if (keys.ArrowLeft) tilt = -20 * sensitivity;
-    if (keys.ArrowRight) tilt = 20 * sensitivity;
+    if (keys.ArrowLeft) tilt = -20 * currentSense;
+    if (keys.ArrowRight) tilt = 20 * currentSense;
     
     if (tilt !== 0) {
         if (controlsInverted) tilt *= -1;
@@ -292,9 +328,22 @@ function handleKeyboardInput() {
     }
 }
 
+function shuffleRecipe() {
+    for (let i = recipe.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [recipe[i], recipe[j]] = [recipe[j], recipe[i]];
+    }
+}
+
 // GESTION DU DÉBUT DU JEU
 startBtn.addEventListener('click', () => {
     startScreen.style.display = 'none';
+
+    // Initialisation / Reset du jeu
+    currentRecipeIndex = 0;
+    victory = false;
+    objects = [];
+    shuffleRecipe();
 
     // Demande de permission pour le gyroscope (nécessaire sur iOS)
     if (typeof DeviceOrientationEvent.requestPermission === 'function') {

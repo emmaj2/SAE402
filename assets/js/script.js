@@ -15,8 +15,8 @@ let player = {
     ax: 0
 };
 
-const friction = 0.85; // Plus bas = plus de frottements (plus "lourd" dans l'eau)
-const sensitivity = 0.25; // Augmenté un peu pour compenser la friction
+const friction = 0.75; // Plus bas = plus de frottements (plus "lourd" dans l'eau)
+const sensitivity = 0.12; // Baissé pour plus de contrôle
 
 // GESTION DES OBJETS
 let objects = [];
@@ -29,6 +29,17 @@ const recipe = [1, 2, 3, 4]; // L'ordre des IDs à ramasser
 let currentRecipeIndex = 0; // Quel ingrédient on cherche (0 à 3)
 let gameActive = false;
 let victory = false;
+
+// ETATS DE MALUS
+let controlsInverted = false;
+let inversionTimer = 0;
+const INVERSION_DURATION = 180; // 3 secondes à 60fps
+
+// CONTRÔLES CLAVIER (POUR TEST PC)
+let keys = {
+    ArrowLeft: false,
+    ArrowRight: false
+};
 
 // REDIMENSIONNEMENT
 function resizeCanvas() {
@@ -64,16 +75,30 @@ function updatePhysics() {
 
 function spawnObject() {
     frameCount++;
-    if (frameCount % 60 === 0) { // Toutes les ~1 seconde
-        const isBonus = Math.random() > 0.4;
-        const id = isBonus ? Math.floor(Math.random() * 4) + 1 : Math.floor(Math.random() * 3) + 1;
+    if (frameCount % 120 === 0) { // Toutes les ~2 secondes
+        // 50% de chance de faire apparaître l'ingrédient actuel de la recette
+        // 30% un autre ingrédient aléatoire
+        // 20% un malus
+        const rand = Math.random();
+        let type, id;
+
+        if (rand < 0.5) {
+            type = 'good';
+            id = recipe[currentRecipeIndex];
+        } else if (rand < 0.8) {
+            type = 'good';
+            id = Math.floor(Math.random() * 4) + 1;
+        } else {
+            type = 'malus';
+            id = Math.floor(Math.random() * 3) + 1;
+        }
         
         objects.push({
             x: Math.random() * (W - objectSize),
             y: -objectSize,
             w: objectSize,
             h: objectSize,
-            type: isBonus ? 'good' : 'malus',
+            type: type,
             id: id
         });
     }
@@ -115,7 +140,13 @@ function handlePickup(obj) {
         }
     } else {
         // Malus
-        currentRecipeIndex = 0;
+        if (obj.id === 1) { // Malus Inversion
+            controlsInverted = true;
+            inversionTimer = INVERSION_DURATION;
+        } else {
+            // Autres malus (Simple reset pour l'instant)
+            currentRecipeIndex = 0;
+        }
     }
 }
 
@@ -159,6 +190,28 @@ function drawUI() {
             ctx.strokeRect(itemX, itemY, itemSize, itemSize);
         }
     });
+
+    // JAUGE D'INVERSION
+    if (controlsInverted) {
+        const gaugeW = 100;
+        const gaugeH = 10;
+        const gaugeX = W - gaugeW - 20;
+        const gaugeY = 20;
+
+        // Fond jauge
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
+        ctx.fillRect(gaugeX, gaugeY, gaugeW, gaugeH);
+
+        // Remplissage (temps restant)
+        const progress = inversionTimer / INVERSION_DURATION;
+        ctx.fillStyle = "#FF5722";
+        ctx.fillRect(gaugeX, gaugeY, gaugeW * progress, gaugeH);
+
+        ctx.fillStyle = "white";
+        ctx.font = "bold 10px Arial";
+        ctx.textAlign = "right";
+        ctx.fillText("ATTENTION : INVERSE !", gaugeX + gaugeW, gaugeY - 5);
+    }
 }
 
 function draw() {
@@ -177,6 +230,12 @@ function draw() {
     ctx.fillRect(0, 0, W, H);
 
     // 2. Logique
+    if (controlsInverted) {
+        inversionTimer--;
+        if (inversionTimer <= 0) controlsInverted = false;
+    }
+
+    handleKeyboardInput();
     updatePhysics();
     spawnObject();
     updateObjects();
@@ -203,11 +262,35 @@ function draw() {
 
 // CONTRÔLES (GYROSCOPE)
 window.addEventListener('deviceorientation', (event) => {
-    // gamma est l'inclinaison gauche/droite (en degrés)
     if (event.gamma !== null) {
-        player.ax = event.gamma * sensitivity;
+        let tilt = event.gamma * sensitivity;
+        if (controlsInverted) tilt *= -1;
+        player.ax = tilt;
     }
 });
+
+// CONTRÔLES (CLAVIER)
+window.addEventListener('keydown', (e) => {
+    if (e.key in keys) keys[e.key] = true;
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.key in keys) keys[e.key] = false;
+});
+
+function handleKeyboardInput() {
+    let tilt = 0;
+    if (keys.ArrowLeft) tilt = -20 * sensitivity;
+    if (keys.ArrowRight) tilt = 20 * sensitivity;
+    
+    if (tilt !== 0) {
+        if (controlsInverted) tilt *= -1;
+        player.ax = tilt;
+    } else if (typeof DeviceOrientationEvent === 'undefined') {
+        // Si pas de gyroscope (Desktop) et pas de touches, on freine l'accélération
+        player.ax = 0;
+    }
+}
 
 // GESTION DU DÉBUT DU JEU
 startBtn.addEventListener('click', () => {

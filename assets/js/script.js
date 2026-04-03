@@ -52,7 +52,7 @@ let player = {
 
 // GESTION DES OBJETS
 let objects = [];
-const objectSize = 50; // Plus grand pour une meilleure visibilité
+let objectSize = 50; // Plus grand pour une meilleure visibilité
 const spawnSpeed = 2; // Vitesse de descente
 let frameCount = 0;
 
@@ -95,6 +95,15 @@ function resizeCanvas() {
     W = canvas.width;
     H = canvas.height;
     
+    // Scaling réactif : plus gros sur PC, plus petit sur mobile/tablette
+    if (W > 1024) {
+        objectSize = 65; // PC
+    } else if (W > 600) {
+        objectSize = 50; // Tablette
+    } else {
+        objectSize = 35; // Mobile
+    }
+
     // Replace le joueur si on change la taille
     player.x = (W / 2) - (player.w / 2);
     player.y = H - player.h - 50;
@@ -258,50 +267,7 @@ function updateBeerUI() {
 
 function drawUI() {
     // Le cadre de recette est maintenant géré en HTML/CSS
-
-    // JAUGE D'INVERSION
-    if (controlsInverted) {
-        const gaugeW = 100;
-        const gaugeH = 10;
-        const gaugeX = W - gaugeW - 20;
-        const gaugeY = 20;
-
-        // Fond jauge
-        ctx.fillStyle = "rgba(0,0,0,0.3)";
-        ctx.fillRect(gaugeX, gaugeY, gaugeW, gaugeH);
-
-        // Remplissage (temps restant)
-        const progress = inversionTimer / INVERSION_DURATION;
-        ctx.fillStyle = "#FF5722";
-        ctx.fillRect(gaugeX, gaugeY, gaugeW * progress, gaugeH);
-
-        ctx.fillStyle = "white";
-        ctx.font = "bold 10px Arial";
-        ctx.textAlign = "right";
-        ctx.fillText("ATTENTION : INVERSE !", gaugeX + gaugeW, gaugeY - 5);
-    }
-
-    // JAUGE D'HUILE
-    if (isOiled) {
-        const gaugeW = 100;
-        const gaugeH = 10;
-        const gaugeX = W - gaugeW - 20;
-        const gaugeY = controlsInverted ? 50 : 20; // Se décale si l'autre jauge est là
-
-        // Fond jauge
-        ctx.fillStyle = "rgba(0,0,0,0.3)";
-        ctx.fillRect(gaugeX, gaugeY, gaugeW, gaugeH);
-
-        // Remplissage (temps restant)
-        const progress = oilTimer / OIL_DURATION;
-        ctx.fillStyle = "#FFC107"; // Jaune huile
-        ctx.fillRect(gaugeX, gaugeY, gaugeW * progress, gaugeH);
-
-        ctx.fillStyle = "white";
-        ctx.font = "bold 10px Arial";
-        ctx.textAlign = "right";
-        ctx.fillText("ATTENTION : HUILE !", gaugeX + gaugeW, gaugeY - 5);
-    }
+    // On n'affiche plus les jauges, seulement la bière (gérée dans updateBeerUI)
 }
 
 function draw() {
@@ -428,8 +394,8 @@ window.addEventListener('keyup', (e) => {
 function handleKeyboardInput() {
     let currentSense = isOiled ? sensitivity / 2 : sensitivity;
     let tilt = 0;
-    if (keys.ArrowLeft) tilt = -20 * currentSense;
-    if (keys.ArrowRight) tilt = 20 * currentSense;
+    if (keys.ArrowLeft) tilt = -8 * currentSense;
+    if (keys.ArrowRight) tilt = 8 * currentSense;
     
     if (tilt !== 0) {
         if (controlsInverted) tilt *= -1;

@@ -181,8 +181,8 @@ body {
     position: fixed;
     top: 20px;
     right: 20px;
-    width: 100px;
-    height: 100px;
+    width: 60px; /* Plus petit */
+    height: 60px;
     background-size: contain;
     background-repeat: no-repeat;
     z-index: 100;

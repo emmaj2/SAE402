@@ -17,7 +17,10 @@ html, body, main {
     width: 100%;
     overflow: hidden;
     touch-action: none;
-    background-color: #29a4dc;
+}
+
+body {
+    background-color: #29a4dc; /* Fallback si l'image ne charge pas */
 }
 
 #gameCanva {
@@ -70,3 +73,124 @@ html, body, main {
     border-left: 6px solid var(--lightyellow);
     box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
 }
+
+/* CADRE DE RECETTE */
+#recipe-container {
+    position: fixed;
+    top: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: fit-content; /* S'adapte parfaitement au contenu */
+    min-width: 120px;
+    max-width: 95vw;
+    height: auto;
+    
+    /* Utilisation de border-image (SVG 60x60, découpe à 20px) */
+    border: 20px solid transparent; 
+    border-image-source: url(../img/frame_9slice.svg);
+    border-image-slice: 20 fill; 
+    border-image-repeat: stretch;
+    
+    display: none;
+    align-items: center;
+    justify-content: center;
+    image-rendering: pixelated;
+    z-index: 5;
+    box-sizing: border-box;
+}
+
+#recipe-items {
+    display: flex;
+    gap: 20px; /* Plus d'espace entre les parchemins */
+    justify-content: center;
+}
+
+.recipe-item {
+    width: 64px; /* On double la taille (32px -> 64px) */
+    height: 64px;
+    background-image: url(../img/elements/parchemin.svg);
+    background-size: contain;
+    background-repeat: no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Retro";
+    font-size: 14px;
+    color: #4d3d2c;
+    position: relative;
+    image-rendering: pixelated;
+}
+
+/* Types d'ingrédients */
+.recipe-item.item-fabric {
+    background-image: url(../img/elements/ingredients/fabric.svg);
+}
+.recipe-item.item-dye {
+    background-image: url(../img/elements/ingredients/dye.svg);
+}
+.recipe-item.item-needle {
+    background-image: url(../img/elements/ingredients/needle.svg);
+}
+.recipe-item.item-scissors {
+    background-image: url(../img/elements/ingredients/scissors.svg);
+}
+
+.recipe-item.collected {
+    opacity: 0.5;
+    filter: grayscale(1);
+}
+
+.recipe-item.current {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.8));
+}
+
+.recipe-item.current::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    border: 2px solid var(--lightyellow);
+    border-radius: 4px;
+    animation: pulse 0.8s infinite alternate;
+}
+
+@keyframes pulse {
+    from { opacity: 0.4; }
+    to { opacity: 1; }
+}
+
+@media (max-width: 480px) {
+    #recipe-container {
+        width: auto;
+        min-width: 150px;
+        height: auto;
+        padding: 15px 25px;
+        top: 15px;
+    }
+    .recipe-item {
+        width: 48px;
+        height: 48px;
+    }
+}
+
+/* STATUS BIÈRE */
+#beer-status {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 100px;
+    height: 100px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    z-index: 100;
+    display: none;
+    image-rendering: auto;
+}
+
+.beer-4 { background-image: url(../img/elements/malus/beer4.svg); }
+.beer-3 { background-image: url(../img/elements/malus/beer3.svg); }
+.beer-2 { background-image: url(../img/elements/malus/beer2.svg); }
+.beer-1 { background-image: url(../img/elements/malus/beer1.svg); }

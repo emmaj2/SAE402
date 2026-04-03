@@ -3,6 +3,40 @@ const ctx = canvas.getContext('2d');
 const startScreen = document.getElementById('startScreen');
 const startBtn = document.querySelector('.startBtn');
 
+// Chargement des images pour le canvas
+const images = {
+    fabric: new Image(),
+    dye: new Image(),
+    needle: new Image(),
+    scissors: new Image(),
+    river: new Image(),
+    beer: new Image(),
+    gear: new Image()
+};
+images.fabric.src = 'assets/img/elements/ingredients/fabric.svg';
+images.dye.src = 'assets/img/elements/ingredients/dye.svg';
+images.needle.src = 'assets/img/elements/ingredients/needle.svg';
+images.scissors.src = 'assets/img/elements/ingredients/scissors.svg';
+images.river.src = 'assets/img/river.svg';
+images.beer.src = 'assets/img/elements/malus/beer4.svg';
+images.gear.src = 'assets/img/elements/malus/gear.svg';
+
+// Debug: vérifier le chargement
+Object.keys(images).forEach(key => {
+    images[key].onerror = () => console.error(`Erreur de chargement pour l'image: ${key} (${images[key].src})`);
+});
+
+// Mapping des IDs vers les clés d'images
+const ingredientMap = {
+    1: 'fabric',
+    2: 'dye',
+    3: 'needle',
+    4: 'scissors'
+};
+
+const friction = 0.75; 
+const sensitivity = 0.12; 
+
 var H, W;
 
 // INITIALISATION DU JOUEUR
@@ -15,16 +49,13 @@ let player = {
     ax: 0
 };
 
-const friction = 0.75; // Plus bas = plus de frottements (plus "lourd" dans l'eau)
-const sensitivity = 0.12; // Baissé pour plus de contrôle
 
 // GESTION DES OBJETS
 let objects = [];
-const objectSize = 30;
+const objectSize = 50; // Plus grand pour une meilleure visibilité
 const spawnSpeed = 2; // Vitesse de descente
 let frameCount = 0;
 
-// RECETTE ET PROGRESSION
 // RECETTE ET PROGRESSION
 let recipe = [1, 2, 3, 4]; // L'ordre sera mélangé au début
 let currentRecipeIndex = 0; // Quel ingrédient on cherche (0 à 3)
@@ -38,7 +69,18 @@ const INVERSION_DURATION = 180; // 3 secondes à 60fps
 
 let isOiled = false;
 let oilTimer = 0;
-const OIL_DURATION = 300; // 5 secondes à 60fps
+const OIL_DURATION = 300; 
+
+let isImmobilized = false;
+let immobilizationTimer = 0;
+const IMMOBILIZATION_DURATION = 120; // 2 secondes
+
+let beerLevel = 0; // 0 à 4
+let beerTimer = 0;
+const BEER_DURATION = 400; 
+
+// ANIMATION DU FOND
+let backgroundY = 0;
 
 // CONTRÔLES CLAVIER (POUR TEST PC)
 let keys = {
@@ -53,7 +95,7 @@ function resizeCanvas() {
     W = canvas.width;
     H = canvas.height;
     
-    // Repositionner le joueur en bas au milieu lors du redimensionnement
+    // Replace le joueur si on change la taille
     player.x = (W / 2) - (player.w / 2);
     player.y = H - player.h - 50;
 }
@@ -63,17 +105,25 @@ resizeCanvas();
 
 // DESSIN ET MISE À JOUR (BOUCLE DE JEU)
 function updatePhysics() {
+    if (isImmobilized) {
+        player.vx = 0;
+        player.ax = 0;
+        return; // On ne bouge plus si immobilisé
+    }
     player.vx += player.ax;
     player.vx *= friction;
     player.x += player.vx;
 
-    // Limites de l'écran
-    if (player.x < 0) {
-        player.x = 0;
+    // petite marge pour empêche le joueur de "sortir" de l'eau
+    const margin = W * 0.13;
+
+    // Limites de l'écran avec marges
+    if (player.x < margin) {
+        player.x = margin;
         player.vx = 0;
     }
-    if (player.x > W - player.w) {
-        player.x = W - player.w;
+    if (player.x > W - player.w - margin) {
+        player.x = W - player.w - margin;
         player.vx = 0;
     }
 }
@@ -81,9 +131,6 @@ function updatePhysics() {
 function spawnObject() {
     frameCount++;
     if (frameCount % 120 === 0) { // Toutes les ~2 secondes
-        // 50% de chance de faire apparaître l'ingrédient actuel de la recette
-        // 30% un autre ingrédient aléatoire
-        // 20% un malus
         const rand = Math.random();
         let type, id;
 
@@ -95,11 +142,15 @@ function spawnObject() {
             id = Math.floor(Math.random() * 4) + 1;
         } else {
             type = 'malus';
-            id = Math.floor(Math.random() * 3) + 1;
+            id = Math.floor(Math.random() * 2) + 1; // 1: Inversion, 2: Huile, 3: Bière
+            if (Math.random() > 0.5) id = 3; // Plus de chance de tomber sur une bière pour tester
         }
         
+        const margin = W * 0.15;
+        const spawnX = margin + Math.random() * (W - objectSize - 2 * margin);
+
         objects.push({
-            x: Math.random() * (W - objectSize),
+            x: spawnX,
             y: -objectSize,
             w: objectSize,
             h: objectSize,
@@ -132,72 +183,81 @@ function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
     return x2 < x1 + w1 && x2 + w2 > x1 && y2 < y1 + h1 && y2 + h2 > y1;
 }
 
+function updateRecipeUI() {
+    const wrapper = document.getElementById('recipe-container');
+    const container = document.getElementById('recipe-items');
+    
+    // On affiche le cadre seulement si le jeu est actif
+    if (gameActive && !victory) {
+        wrapper.style.display = 'flex';
+    } else {
+        wrapper.style.display = 'none';
+        return;
+    }
+
+    container.innerHTML = '';
+    
+    recipe.forEach((id, index) => {
+        const item = document.createElement('div');
+        item.className = 'recipe-item';
+        
+        // On assigne le visuel correspondant à l'ID
+        const type = ingredientMap[id];
+        if (type) {
+            item.classList.add(`item-${type}`);
+        }
+
+        if (index < currentRecipeIndex) {
+            item.classList.add('collected');
+        } else if (index === currentRecipeIndex) {
+            item.classList.add('current');
+        }
+        
+        container.appendChild(item);
+    });
+}
+
 function handlePickup(obj) {
     if (obj.type === 'good') {
         if (obj.id === recipe[currentRecipeIndex]) {
             currentRecipeIndex++;
+            updateRecipeUI();
             if (currentRecipeIndex === recipe.length) {
                 victory = true;
             }
         } else {
             // Mauvais ordre
             currentRecipeIndex = 0;
+            updateRecipeUI();
         }
     } else {
         // Malus
-        if (obj.id === 1) { // Malus Inversion
+        if (obj.id === 1 || obj.id === 2) { // Malus Engrenage (Immobilisation)
+            isImmobilized = true;
+            immobilizationTimer = IMMOBILIZATION_DURATION;
+        } else if (obj.id === 3) { // Malus Bière (Inversion + États)
             controlsInverted = true;
-            inversionTimer = INVERSION_DURATION;
-        } else if (obj.id === 2) { // Malus Huile
-            isOiled = true;
-            oilTimer = OIL_DURATION;
-        } else {
-            // Autres malus (Simple reset pour l'instant)
-            currentRecipeIndex = 0;
+            inversionTimer = BEER_DURATION;
+            beerLevel = 4;
+            beerTimer = BEER_DURATION;
+            updateBeerUI();
         }
+        // On ne reset plus la recette en cas de malus !
+    }
+}
+
+function updateBeerUI() {
+    const beerUI = document.getElementById('beer-status');
+    if (beerLevel > 0) {
+        beerUI.style.display = 'block';
+        beerUI.className = `beer-${beerLevel}`;
+    } else {
+        beerUI.style.display = 'none';
     }
 }
 
 function drawUI() {
-    // Petit papier de recette en haut
-    const paperW = 200;
-    const paperH = 60;
-    const paperX = (W / 2) - (paperW / 2);
-    const paperY = 20;
-
-    ctx.fillStyle = "#fff9d7"; // Couleur papier
-    ctx.fillRect(paperX, paperY, paperW, paperH);
-    ctx.strokeStyle = "#d4c590";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(paperX, paperY, paperW, paperH);
-
-    // Titre recette
-    ctx.fillStyle = "#5d4037";
-    ctx.font = "bold 12px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("RECETTE", paperX + paperW/2, paperY + 15);
-
-    // Ingrédients dans l'ordre
-    recipe.forEach((id, index) => {
-        const itemX = paperX + 30 + (index * 40);
-        const itemY = paperY + 25;
-        const itemSize = 25;
-
-        // Si c'est déjà ramassé, on peut mettre une coche ou opacité
-        ctx.fillStyle = index < currentRecipeIndex ? "#4CAF50" : "#ddd";
-        ctx.fillRect(itemX, itemY, itemSize, itemSize);
-        
-        ctx.fillStyle = "black";
-        ctx.font = "14px Arial";
-        ctx.fillText(id, itemX + itemSize/2, itemY + 18);
-
-        // Highlight de l'ingrédient actuel
-        if (index === currentRecipeIndex) {
-            ctx.strokeStyle = "red";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(itemX, itemY, itemSize, itemSize);
-        }
-    });
+    // Le cadre de recette est maintenant géré en HTML/CSS
 
     // JAUGE D'INVERSION
     if (controlsInverted) {
@@ -245,6 +305,8 @@ function drawUI() {
 }
 
 function draw() {
+    requestAnimationFrame(draw);
+
     if (victory) {
         ctx.fillStyle = "rgba(0,0,0,0.5)";
         ctx.fillRect(0, 0, W, H);
@@ -255,11 +317,30 @@ function draw() {
         return;
     }
 
-    // 1. Fond bleu (Eau)
-    ctx.fillStyle = "#29a4dc";
-    ctx.fillRect(0, 0, W, H);
+    // 1. On efface le canvas
+    ctx.clearRect(0, 0, W, H);
 
-    // 2. Logique
+    // 1b. On anime et on dessine le fond (la rivière)
+    backgroundY += spawnSpeed;
+    if (images.river.complete && images.river.naturalWidth !== 0) {
+        let drawWidth = images.river.naturalWidth;
+        let drawHeight = images.river.naturalHeight;
+        const imgH = W * (drawHeight / drawWidth);
+        const yOffset = backgroundY % imgH;
+        
+        // On dessine assez de tuiles pour remplir TOUT le rectangle (H)
+        for (let y = yOffset - imgH; y < H; y += imgH) {
+            ctx.drawImage(images.river, 0, y, W, imgH);
+        }
+    } else {
+        ctx.fillStyle = "#29a4dc";
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    // Si le jeu n'est pas actif, on s'arrête là (on ne dessine que le fond)
+    if (!gameActive) return;
+
+    // 2. Logique de jeu
     if (controlsInverted) {
         inversionTimer--;
         if (inversionTimer <= 0) controlsInverted = false;
@@ -267,6 +348,24 @@ function draw() {
     if (isOiled) {
         oilTimer--;
         if (oilTimer <= 0) isOiled = false;
+    }
+    if (isImmobilized) {
+        immobilizationTimer--;
+        if (immobilizationTimer <= 0) isImmobilized = false;
+    }
+    if (beerLevel > 0) {
+        beerTimer--;
+        // L'inversion s'arrête quand la bière est vide
+        if (beerTimer <= 0) {
+            controlsInverted = false;
+            inversionTimer = 0;
+        }
+        // On change l'état de la bière tous les 1/4 du temps
+        let newLevel = Math.ceil((beerTimer / BEER_DURATION) * 4);
+        if (newLevel !== beerLevel) {
+            beerLevel = newLevel;
+            updateBeerUI();
+        }
     }
 
     handleKeyboardInput();
@@ -276,12 +375,27 @@ function draw() {
 
     // 3. Dessin des objets
     objects.forEach(obj => {
-        ctx.fillStyle = obj.type === 'good' ? "#4CAF50" : "#F44336";
-        ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-        ctx.fillStyle = "white";
-        ctx.font = "12px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(obj.id, obj.x + obj.w/2, obj.y + obj.h/2 + 5);
+        let currentImg = null;
+        if (obj.type === 'good') {
+            const typeKey = ingredientMap[obj.id];
+            currentImg = images[typeKey];
+        } else {
+            // Malus images
+            if (obj.id === 1 || obj.id === 2) currentImg = images.gear; // Engrenage pour inversion/huile
+            if (obj.id === 3) currentImg = images.beer; // Bière (beer4 par défaut)
+        }
+
+        if (currentImg && currentImg.complete && currentImg.naturalWidth !== 0) {
+            ctx.drawImage(currentImg, obj.x, obj.y, obj.w, obj.h);
+        } else {
+            // Fallback
+            ctx.fillStyle = obj.type === 'good' ? "#4CAF50" : "#F44336";
+            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+            ctx.fillStyle = "white";
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(obj.id, obj.x + obj.w/2, obj.y + obj.h/2 + 5);
+        }
     });
 
     // 4. Dessin du radeau (joueur)
@@ -290,8 +404,6 @@ function draw() {
 
     // 5. UI
     drawUI();
-
-    requestAnimationFrame(draw);
 }
 
 // CONTRÔLES (GYROSCOPE)
@@ -323,7 +435,6 @@ function handleKeyboardInput() {
         if (controlsInverted) tilt *= -1;
         player.ax = tilt;
     } else if (typeof DeviceOrientationEvent === 'undefined') {
-        // Si pas de gyroscope (Desktop) et pas de touches, on freine l'accélération
         player.ax = 0;
     }
 }
@@ -338,28 +449,31 @@ function shuffleRecipe() {
 // GESTION DU DÉBUT DU JEU
 startBtn.addEventListener('click', () => {
     startScreen.style.display = 'none';
+    gameActive = true; 
 
     // Initialisation / Reset du jeu
     currentRecipeIndex = 0;
     victory = false;
     objects = [];
+    beerLevel = 0;
+    beerTimer = 0;
+    isImmobilized = false;
+    controlsInverted = false;
+    updateBeerUI();
     shuffleRecipe();
+    updateRecipeUI();
 
     // Demande de permission pour le gyroscope (nécessaire sur iOS)
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
             .then(permissionState => {
-                if (permissionState === 'granted') {
-                    draw();
-                } else {
+                if (permissionState !== 'granted') {
                     alert("L'accès aux capteurs est nécessaire pour jouer !");
                 }
             })
             .catch(console.error);
-    } else {
-        // Pour les autres navigateurs (Android/Desktop en test)
-        draw();
     }
 });
 
-
+// DÉMARRAGE IMMÉDIAT DE LA BOUCLE (pour voir le fond tout de suite)
+draw();

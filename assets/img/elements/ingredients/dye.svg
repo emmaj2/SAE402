@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <svg version="1.1" width="64" height="64" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+<filter id="outline"><feMorphology in="SourceAlpha" result="dilated" operator="dilate" radius="1"/><feFlood flood-color="#ffffff" result="flood"/><feComposite in="flood" in2="dilated" operator="in" result="stroke"/><feMerge><feMergeNode in="stroke"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<g filter="url(#outline)">
 <rect x="26" y="0" width="11" height="1" fill="#2A160C" />
 <rect x="25" y="1" width="1" height="2" fill="#2A160C" />
 <rect x="26" y="1" width="1" height="1" fill="#583322" />
@@ -314,4 +316,5 @@
 <rect x="25" y="61" width="14" height="1" fill="#4C3B4A" />
 <rect x="39" y="61" width="5" height="1" fill="#2E092A" />
 <rect x="25" y="62" width="14" height="1" fill="#2E092A" />
+</g>
 </svg>

@@ -564,7 +564,8 @@ function drawPlayer() {
  */
 window.addEventListener('deviceorientation', (event) => {
     if (event.gamma !== null) {
-        let currentSense = isOiled ? sensitivity / 2 : sensitivity;
+        // Vitesse du gyroscope réduite de moitié
+        let currentSense = (isOiled ? sensitivity / 2 : sensitivity) / 2;
         let tilt = event.gamma * currentSense;
         if (controlsInverted) tilt *= -1;
         player.ax = tilt;
@@ -641,7 +642,7 @@ document.getElementById('quitBtn').addEventListener('click', () => {
 startBtn.addEventListener('click', () => {
     startScreen.style.display = 'none';
 
-    backtrack = new Audio('../assets/sounds/jeu2.mp3');
+    backtrack = new Audio('assets/sounds/jeu2.mp3');
     backtrack.loop = true;
     backtrack.play();
 
@@ -651,6 +652,7 @@ startBtn.addEventListener('click', () => {
     currentRecipeIndex = 0;
     victory = false;
     isPaused = false;
+    
     objects = [];
     beerLevel = 0;
     beerTimer = 0;

@@ -242,7 +242,7 @@ const Cinematic = (() => {
                 _ctx.drawImage(e.sprite, srcX, srcY, a.frameW, a.frameH, pos.px, pos.py, dw, dh);
             }
             _ctx.restore();
-        } else {
+        } else if (!e.sprite) {
             const pos = toPixel(e.x, e.y, e.w, e.h);
 
             _ctx.save();

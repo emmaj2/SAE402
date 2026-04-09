@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <svg version="1.1" width="64" height="64" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
-<filter id="outline"><feMorphology in="SourceAlpha" result="dilated" operator="dilate" radius="1"/><feFlood flood-color="#ffffff" result="flood"/><feComposite in="flood" in2="dilated" operator="in" result="stroke"/><feMerge><feMergeNode in="stroke"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="outline"><feComponentTransfer in="SourceGraphic" result="solid"><feFuncA type="linear" slope="15" intercept="0"/></feComponentTransfer><feMorphology in="solid" result="dilated" operator="dilate" radius="1"/><feFlood flood-color="#ffffff" result="flood"/><feComposite in="flood" in2="dilated" operator="in" result="stroke"/><feMerge><feMergeNode in="stroke"/><feMergeNode in="solid"/></feMerge></filter>
 <g filter="url(#outline)">
 <rect x="15" y="2" width="7" height="1" fill="#343535" />
 <rect x="14" y="3" width="1" height="1" fill="#343535" />

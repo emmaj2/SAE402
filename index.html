@@ -24,22 +24,33 @@
             <div class="pause-bar"></div>
         </div>
 
-        <div id="startScreen">
+        <div id="startScreen" style="display: none;">
             <h1 class="game-title">RADEAU CRAFTER</h1>
             <div class="game-rules">
-                Ramasser les elements dans le bon ordre, a l'aide du l'orientation du telephone. Attention aux pieges
+                Collect all the ingredients in the right order. Be aware of debuffs
             </div>
-            <button class="startBtn">JOUER</button>
+            <button class="startBtn">PLAY</button>
         </div>
 
         <div id="pauseScreen" style="display: none;">
             <h2>PAUSE</h2>
-            <button class="startBtn" id="resumeBtn">REPRENDRE</button>
-            <button class="startBtn" id="restartBtn">RECOMMENCER</button>
-            <button class="startBtn quitBtn" id="quitBtn">TERMINER LE JEU</button>
+            <button class="startBtn" id="resumeBtn">RESUME</button>
+            <button class="startBtn" id="restartBtn">RESTART</button>
+            <button class="startBtn quitBtn" id="quitBtn">END GAME</button>
+        </div>
+
+        <div id="victoryScreen" style="display: none;">
+            <h1 class="game-title">VICTORY !</h1>
+            <div class="game-rules">
+                You won a "Mulhousien outfit".
+            </div>
+            <div class="lehmann-victory-sprite"></div>
+            <button class="startBtn" id="victoryContinueBtn">CONTINUE</button>
+            <button class="startBtn" id="victoryRestartBtn">REPLAY</button>
         </div>
     </main>
 
+    <script src="assets/js/cinematic.js"></script>
     <script src="assets/js/script.js?v=2"></script>
 </body>
 
